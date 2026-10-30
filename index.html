@@ -1,3 +1,53 @@
-<!doctype html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Virtual Try-On Demo</title><link rel="stylesheet" href="/src/style.css"></head><body>
-<main><h1>Virtual Try-On</h1><p>Choose a demo product, allow your camera, and position yourself in frame. Processing stays in your browser.</p><section class="toolbar"><label>Product <select id="product"></select></label><label>Camera <select id="camera"><option value="user">Front</option><option value="environment">Rear</option></select></label><button id="start">Start camera</button><button id="stop" disabled>Stop</button><button id="capture" disabled>Save snapshot</button></section>
-<div class="stage"><video id="video" autoplay muted playsinline></video><canvas id="overlay"></canvas><span id="status" role="status">Camera is off</span></div><p class="note">Demo previews are approximate; not accurate sizing or garment fit. Camera imagery is not uploaded.</p></main><script type="module" src="/src/main.js"></script></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Virtual Try-On Demo</title>
+  <link rel="stylesheet" href="/src/style.css">
+</head>
+<body>
+  <main>
+    <h1>Virtual Try-On</h1>
+    <p>Choose a demo product, allow your camera, and position yourself in frame. Live camera processing stays in your browser.</p>
+    <a class="section-link" href="#ai-tryon">Try AI clothing generation ↓</a>
+    <section class="toolbar" aria-label="Live camera controls">
+      <label>Product <select id="product"></select></label>
+      <label>Camera <select id="camera"><option value="user">Front</option><option value="environment">Rear</option></select></label>
+      <button id="start">Start camera</button>
+      <button id="stop" disabled>Stop</button>
+      <button id="capture" disabled>Save snapshot</button>
+    </section>
+    <div class="stage">
+      <video id="video" autoplay muted playsinline></video>
+      <canvas id="overlay"></canvas>
+      <span id="status" role="status">Camera is off</span>
+    </div>
+    <p class="note">Live previews are approximate; not accurate sizing or garment fit. Camera imagery from this preview is not uploaded.</p>
+
+    <section id="ai-tryon" class="ai-tryon" aria-labelledby="ai-heading">
+      <div class="ai-heading">
+        <div>
+          <p class="eyebrow">FASHN VTON 1.5 · Hosted demo</p>
+          <h2 id="ai-heading">AI clothing try-on</h2>
+        </div>
+        <a class="external-demo" href="https://huggingface.co/spaces/fashn-ai/fashn-vton-1.5" target="_blank" rel="noopener noreferrer">Open demo in a new tab ↗</a>
+      </div>
+      <p>Upload a person photo and a garment photo in the demo below to generate a still image. Choose <strong>tops</strong> for shirts or <strong>one-pieces</strong> for dresses.</p>
+      <p class="note">Photos you upload in this demo are sent to the FASHN Space on Hugging Face for processing. Your live camera preview above is not sent automatically.</p>
+      <p class="note">Free shared GPU usage has quotas and may involve a queue. If the embed does not load or asks you to sign in, open the demo in a new tab.</p>
+      <div class="demo-frame">
+        <iframe
+          src="https://fashn-ai-fashn-vton-1-5.hf.space"
+          title="FASHN VTON 1.5 AI clothing try-on demo hosted on Hugging Face"
+          width="100%"
+          height="1100"
+          loading="lazy"
+          referrerpolicy="no-referrer">
+        </iframe>
+      </div>
+    </section>
+  </main>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

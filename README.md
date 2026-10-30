@@ -5,9 +5,10 @@
 - MediaPipe hand (watch, bracelet, ring), face (earrings), pose (necklace, shirt, dress) tracking
 - Transparent SVG/PNG product overlay with configurable size and offset
 - Product switching, front/rear camera, snapshot export, explicit stop and camera cleanup
-- No server-side images or camera processing; no accounts or paid API
+- Live preview uses browser-local camera processing, without accounts or a paid API
+- Embedded FASHN VTON 1.5 clothing demo, hosted separately on Hugging Face; uploaded demo photos are processed by that service
 
-**Limits:** all overlays are approximate 2D visualizations. Clothing is NOT photo-realistic AI garment replacement. Size/fit, occlusion, perspective, lighting, pose, and left/right earring precision are not production-accurate. Camera access requires localhost or HTTPS. Initial model/WASM loading needs internet access. SVG art is original placeholder art; replace before selling.
+**Live preview limits:** all camera overlays are approximate 2D visualizations. Live clothing overlays are not photorealistic AI garment replacement. Size/fit, occlusion, perspective, lighting, pose, and left/right earring precision are not production-accurate. Camera access requires localhost or HTTPS. Initial model/WASM loading needs internet access. SVG art is original placeholder art; replace before selling. The separate hosted AI demo generates still images from uploaded photos.
 
 ## Setup
 Requires Node.js 20+.
@@ -54,4 +55,6 @@ The GitHub Actions workflow in `.github/workflows/deploy-pages.yml` builds and d
 Vite uses a relative base URL, and product assets use that base, so the site works under a GitHub Pages repository path. The generated `dist/` can also be deployed to any static HTTPS web host. The production build targets modern browsers with ES2022 support.
 
 ## Optional AI garment try-on integration
-For a separate backend, consider FASHN VTON v1.5 (`https://github.com/fashn-AI/fashn-vton-1.5`) after checking all dependency licenses. Build a private inference service accepting the person's photo, the garment photo, and the category (`tops`, `bottoms`, `one-pieces`). Require explicit user consent before uploading. Keep uploads ephemeral, limit size, authenticate/rate-limit API calls, and automatically delete photos. Model inference is not included in this free static starter; it requires a suitable GPU for acceptable speed.
+The page embeds the official free [FASHN VTON 1.5 Space](https://huggingface.co/spaces/fashn-ai/fashn-vton-1.5) below the camera preview. The demo accepts person and garment photos and generates a still image. It has shared GPU queues and usage quotas; a direct link is provided for sign-in or when embedding is unavailable. Photos uploaded inside the demo go to the Hugging Face-hosted service. The page does not automatically upload live camera frames to it. GitHub Pages serves the frontend; the embedded Space supplies inference.
+
+For a separate backend, consider FASHN VTON v1.5 (`https://github.com/fashn-AI/fashn-vton-1.5`) after checking all dependency licenses. Build a private inference service accepting the person's photo, the garment photo, and the category (`tops`, `bottoms`, `one-pieces`). Require explicit user consent before uploading. Keep uploads ephemeral, limit size, authenticate/rate-limit API calls, and automatically delete photos. Self-hosted model inference is not included in this static starter; it requires a suitable GPU for acceptable speed.
