@@ -110,3 +110,62 @@ test('error formatting accepts string rejections and errors without messages', (
   assert.equal(describeError(undefined, 'Retry camera'), 'Retry camera');
   assert.match(describeError({name: 'NotReadableError'}), /Close other apps/);
 });
+
+function rotateLandmarks(points, angle, mirrored = false) {
+  // Rotate in camera pixels before normalizing so non-square frames are covered.
+  return points.map(({x, y}) => {
+    const dx = (mirrored ? -1 : 1) * (x - 320), dy = y - 240;
+    return {x: (320 + dx * Math.cos(angle) - dy * Math.sin(angle)) / 640,
+      y: (240 + dx * Math.sin(angle) + dy * Math.cos(angle)) / 480};
+  });
+}
+
+test('watch strap lies across the wrist for either hand and rotated arms', async () => {
+  const {sdk} = await setup();
+  const points = Array.from({length: 21}, () => ({x: 320, y: 220}));
+  points[0] = {x: 320, y: 300};
+  points[9] = {x: 320, y: 180};
+  points[5] = {x: 280, y: 190};
+  points[17] = {x: 370, y: 205};
+  let drawing;
+  sdk.drawAsset = (product, center, width, angle) => {drawing = {center, width, angle};};
+  for (const rotation of [0, Math.PI / 6, -Math.PI / 3, Math.PI / 2, Math.PI, -Math.PI / 2]) {
+    for (const mirrored of [false, true]) {
+      const p = rotateLandmarks(points, rotation, mirrored);
+      sdk.drawHand(p, sdk.product, 640, 480);
+      const arm = {x: (p[9].x - p[0].x) * 640, y: (p[9].y - p[0].y) * 480};
+      // The SVG strap runs vertically in the source image.
+      const strap = {x: -Math.sin(drawing.angle), y: Math.cos(drawing.angle)};
+      const alignment = (strap.x * arm.x + strap.y * arm.y) / Math.hypot(arm.x, arm.y);
+      assert.ok(Math.abs(alignment) < 1e-10, `Strap must cross the arm (rotation ${rotation}, mirrored ${mirrored})`);
+      assert.ok(drawing.width > 0);
+      const offset = {x: drawing.center.x - p[0].x * 640, y: drawing.center.y - p[0].y * 480};
+      assert.ok(offset.x * arm.x + offset.y * arm.y < 0, 'Watch stays on the forearm side of the wrist');
+    }
+  }
+});
+
+test('dress and shirt hems point toward the hips regardless of shoulder order or body tilt', async () => {
+  const {sdk} = await setup();
+  const points = Array.from({length: 33}, () => ({x: 320, y: 240}));
+  // Anatomical left appears on the right in an unmirrored front-facing image.
+  points[11] = {x: 380, y: 140};
+  points[12] = {x: 260, y: 140};
+  points[23] = {x: 370, y: 360};
+  points[24] = {x: 270, y: 360};
+  let angle;
+  sdk.drawAsset = (product, center, width, rotation) => {angle = rotation;};
+  for (const category of ['dress', 'shirt']) {
+    const product = {...sdk.product, category, image: {naturalHeight: 100, naturalWidth: 100}};
+    for (const rotation of [0, Math.PI / 6, -Math.PI / 4, Math.PI / 2, Math.PI]) {
+      for (const mirrored of [false, true]) {
+        const p = rotateLandmarks(points, rotation, mirrored);
+        sdk.drawPose(p, product, 640, 480);
+        const torso = {x: ((p[23].x + p[24].x - p[11].x - p[12].x) / 2) * 640,
+          y: ((p[23].y + p[24].y - p[11].y - p[12].y) / 2) * 480};
+        const alignment = (-Math.sin(angle) * torso.x + Math.cos(angle) * torso.y) / Math.hypot(torso.x, torso.y);
+        assert.ok(Math.abs(alignment - 1) < 1e-10, `${category} hem must face hips (rotation ${rotation}, mirrored ${mirrored})`);
+      }
+    }
+  }
+});

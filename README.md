@@ -34,6 +34,7 @@ A product record can be persisted in your catalog: `{id, category, asset, scale,
 
 ## Assets
 - Use transparent PNG/WebP or SVG images with a centered product and minimal blank margin.
+- Watch artwork should have a vertical strap; the overlay rotates it across the wrist. Clothing artwork should have its neckline at the top and hem at the bottom; it rotates with the shoulder-to-hip direction.
 - Suggested 1024×1024 resolution for wrist/ring items; 1024×1400 portrait for clothing; center main item in the image.
 - For jewellery supply front-facing artwork, ideally one per orientation (left/right). The MVP uses one duplicated earring image.
 - MediaPipe WASM files and their loaders are bundled from the installed SDK so they stay compatible and load from the same host. Model files are fetched from Google at runtime. Review model licenses before redistributing them.

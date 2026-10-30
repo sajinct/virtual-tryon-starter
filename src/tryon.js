@@ -105,7 +105,9 @@ export class VirtualTryOn {
   }else{
     // Offset from wrist toward elbow using palm direction; wrist is the only detected joint here.
     const center={x:wrist.x-(middle.x-wrist.x)*.23,y:wrist.y-(middle.y-wrist.y)*.23};
-    this.drawAsset(product,center,palmWidth*product.scale,axis-Math.PI/2);
+    // The watch artwork has a vertical strap, which must run across the wrist.
+    const angle=product.category==='watch'?axis:axis-Math.PI/2;
+    this.drawAsset(product,center,palmWidth*product.scale,angle);
   }
  }
  drawFace(p,product,w,h){
@@ -126,7 +128,9 @@ export class VirtualTryOn {
     const torsoHeight=distance(centerShoulders,centerHips);
     const imageRatio=product.image.naturalHeight/product.image.naturalWidth;
     const width=Math.max(sw*product.scale,(product.category==='dress'?torsoHeight*1.9:torsoHeight*1.15)/imageRatio);
-    const angle=Math.atan2(s2.y-s1.y,s2.x-s1.x);
+    // Point the artwork's downward axis from shoulders toward hips. Anatomical
+    // shoulder order reverses in a front view and would flip the garment.
+    const angle=Math.atan2(centerHips.y-centerShoulders.y,centerHips.x-centerShoulders.x)-Math.PI/2;
     this.drawAsset(product,chest,width,angle);
   }
  }
