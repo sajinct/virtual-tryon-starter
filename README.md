@@ -36,7 +36,7 @@ A product record can be persisted in your catalog: `{id, category, asset, scale,
 - Use transparent PNG/WebP or SVG images with a centered product and minimal blank margin.
 - Suggested 1024×1024 resolution for wrist/ring items; 1024×1400 portrait for clothing; center main item in the image.
 - For jewellery supply front-facing artwork, ideally one per orientation (left/right). The MVP uses one duplicated earring image.
-- MediaPipe model files and WASM files are fetched from Google/CDN at runtime. For a self-contained commercial deployment, pin versions and self-host model assets and WASM after reviewing their licenses.
+- MediaPipe WASM files and their loaders are bundled from the installed SDK so they stay compatible and load from the same host. Model files are fetched from Google at runtime. Review model licenses before redistributing them.
 - Production requires HTTPS, explicit camera consent, a visible stop button, no analytics on raw frames, and privacy text.
 
 ## Commercial / license review

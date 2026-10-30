@@ -1,4 +1,9 @@
 import {FilesetResolver, HandLandmarker, FaceLandmarker, PoseLandmarker} from '@mediapipe/tasks-vision';
+import simdLoader from '@mediapipe/tasks-vision/vision_wasm_internal.js?url';
+import simdBinary from '@mediapipe/tasks-vision/vision_wasm_internal.wasm?url';
+import plainLoader from '@mediapipe/tasks-vision/vision_wasm_nosimd_internal.js?url';
+import plainBinary from '@mediapipe/tasks-vision/vision_wasm_nosimd_internal.wasm?url';
+import {describeError} from './errors.js';
 
 const BASE='https://storage.googleapis.com/mediapipe-models';
 const MODELS={
@@ -23,7 +28,12 @@ export class VirtualTryOn {
  async ensureTracker(type){
   if(this.trackers[type])return this.trackers[type];
   this.onStatus('Loading '+type+' tracking model...');
-  if(!this.vision)this.vision=await FilesetResolver.forVisionTasks('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22/wasm');
+  // Bundle the WASM and loader from the same installed package as the JS SDK.
+  // A separate CDN version can be missing or incompatible with that SDK.
+  if(!this.vision){
+    const simd=await FilesetResolver.isSimdSupported();
+    this.vision={wasmLoaderPath:simd?simdLoader:plainLoader,wasmBinaryPath:simd?simdBinary:plainBinary};
+  }
   const options={baseOptions:{modelAssetPath:MODELS[type],delegate:'CPU'},runningMode:'VIDEO'};
   const tracker=type==='hand' ? await HandLandmarker.createFromOptions(this.vision,{...options,numHands:1})
    :type==='face'?await FaceLandmarker.createFromOptions(this.vision,{...options,numFaces:1})
@@ -32,6 +42,7 @@ export class VirtualTryOn {
  }
  async start(facingMode='user'){
   await this.stop();if(!this.product)throw Error('Select a product first');
+  if(!navigator.mediaDevices?.getUserMedia)throw Error('Camera access requires HTTPS and a browser with camera support. Open this site directly in Chrome, Edge, Firefox, or Safari.');
   const gen=++this.generation;
   this.onStatus('Requesting camera...');
   const stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:facingMode},width:{ideal:960},height:{ideal:720}}});
@@ -40,10 +51,16 @@ export class VirtualTryOn {
   await this.video.play();
   if(gen!==this.generation)return;
   this.canvas.width=this.video.videoWidth;this.canvas.height=this.video.videoHeight;
-  await this.ensureTracker(trackerFor[this.product.category]);
-  if(gen!==this.generation)return;
-  this.running=true;this.lastTimestamp=-1;this.onStatus('Tracking — move into camera view');
+  this.running=true;this.lastTimestamp=-1;
   this.loop();
+  try{
+    await this.ensureTracker(trackerFor[this.product.category]);
+    if(gen!==this.generation)return;
+    this.onStatus('Tracking — move into camera view');
+  }catch(error){
+    if(gen!==this.generation)return;
+    this.onStatus('Camera is on; tracking unavailable. '+describeError(error,'The tracking model could not load. Check your connection, then select the product again to retry.'));
+  }
  }
  loop(){
   if(!this.running)return;
@@ -57,10 +74,16 @@ export class VirtualTryOn {
     const now=performance.now();
     if(tracker&&this.video.readyState>=2&&now>this.lastTimestamp){
       this.lastTimestamp=now;
-      const result=tracker.detectForVideo(this.video,now);
-      if(type==='hand')this.drawHand(result.landmarks?.[0],product,w,h);
-      else if(type==='face')this.drawFace(result.faceLandmarks?.[0],product,w,h);
-      else this.drawPose(result.landmarks?.[0],product,w,h);
+      try{
+        const result=tracker.detectForVideo(this.video,now);
+        if(type==='hand')this.drawHand(result.landmarks?.[0],product,w,h);
+        else if(type==='face')this.drawFace(result.faceLandmarks?.[0],product,w,h);
+        else this.drawPose(result.landmarks?.[0],product,w,h);
+      }catch(error){
+        delete this.trackers[type];
+        tracker.close();
+        this.onStatus('Camera is on; tracking stopped. '+describeError(error,'Select the product again to retry.'));
+      }
     }
   }
   this.raf=requestAnimationFrame(()=>this.loop());
@@ -71,18 +94,18 @@ export class VirtualTryOn {
   const ctx=this.ctx;ctx.save();ctx.translate(center.x+product.offsetX*width,center.y+product.offsetY*width);ctx.rotate(angle);
   ctx.drawImage(img,-width/2,-height/2,width,height);ctx.restore();
  }
- drawHand(landmarks,p,w,h){
+ drawHand(p,product,w,h){
   if(!p)return;const pt=i=>point(p[i],w,h);
   const wrist=pt(0),index=pt(5),middle=pt(9),pinky=pt(17);
   const palmWidth=distance(index,pinky),axis=Math.atan2(middle.y-wrist.y,middle.x-wrist.x);
-  if(this.product.category==='ring'){
+  if(product.category==='ring'){
     // Position on ring finger between MCP (13) and PIP (14); orientation follows finger.
     const base=pt(13),joint=pt(14),center=between(base,joint,.52);
-    this.drawAsset(this.product,center,Math.max(12,distance(base,joint)*this.product.scale),Math.atan2(joint.y-base.y,joint.x-base.x)-Math.PI/2);
+    this.drawAsset(product,center,Math.max(12,distance(base,joint)*product.scale),Math.atan2(joint.y-base.y,joint.x-base.x)-Math.PI/2);
   }else{
     // Offset from wrist toward elbow using palm direction; wrist is the only detected joint here.
     const center={x:wrist.x-(middle.x-wrist.x)*.23,y:wrist.y-(middle.y-wrist.y)*.23};
-    this.drawAsset(this.product,center,palmWidth*this.product.scale,axis-Math.PI/2);
+    this.drawAsset(product,center,palmWidth*product.scale,axis-Math.PI/2);
   }
  }
  drawFace(p,product,w,h){

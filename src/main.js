@@ -1,13 +1,69 @@
 import {VirtualTryOn} from './tryon.js';
 import {products} from './products.js';
-const $=id=>document.getElementById(id);
-const select=$('product'),start=$('start'),stop=$('stop'),capture=$('capture'),status=$('status');
-const sdk=new VirtualTryOn({video:$('video'),canvas:$('overlay'),onStatus:s=>status.textContent=s});
-products.forEach(p=>select.add(new Option(p.name,p.id)));
-async function choose(){await sdk.setProduct(products.find(p=>p.id===select.value));}
+import {describeError} from './errors.js';
+
+const $ = id => document.getElementById(id);
+const select = $('product'), start = $('start'), stop = $('stop'), capture = $('capture'), status = $('status');
+let cameraRequest = 0;
+const sdk = new VirtualTryOn({
+  video: $('video'),
+  canvas: $('overlay'),
+  onStatus: message => {
+    status.textContent = message;
+    stop.disabled = !sdk.stream;
+    capture.disabled = !sdk.running;
+  }
+});
+products.forEach(product => select.add(new Option(product.name, product.id)));
+async function choose() {
+  await sdk.setProduct(products.find(product => product.id === select.value));
+}
 await choose();
-select.addEventListener('change',async()=>{try{await choose();}catch(e){status.textContent=e.message;}});
-start.onclick=async()=>{start.disabled=true;try{await sdk.start($('camera').value);stop.disabled=false;capture.disabled=false;}catch(e){status.textContent='Error: '+e.message;start.disabled=false;await sdk.stop();status.textContent='Error: '+e.message;}};
-stop.onclick=async()=>{await sdk.stop();start.disabled=false;stop.disabled=true;capture.disabled=true;};
-capture.onclick=()=>{try{const a=document.createElement('a');a.download=`tryon-${Date.now()}.png`;a.href=sdk.capture();a.click();}catch(e){status.textContent=e.message;}};
-window.addEventListener('pagehide',()=>sdk.destroy());
+
+select.addEventListener('change', async () => {
+  select.disabled = true;
+  try {
+    await choose();
+    if (sdk.running) status.textContent = 'Tracking — move into camera view';
+  } catch (error) {
+    status.textContent = describeError(error, 'The tracking model could not load. Check your connection, then select the product again.');
+  } finally {
+    select.disabled = false;
+  }
+});
+start.onclick = async () => {
+  const request = ++cameraRequest;
+  start.disabled = true;
+  select.disabled = true;
+  try {
+    await sdk.start($('camera').value);
+  } catch (error) {
+    if (request !== cameraRequest) return;
+    await sdk.stop();
+    status.textContent = describeError(error, 'The camera could not start. Please try again.');
+  } finally {
+    if (request === cameraRequest) {
+      start.disabled = sdk.running;
+      select.disabled = false;
+      stop.disabled = !sdk.stream;
+      capture.disabled = !sdk.running;
+    }
+  }
+};
+stop.onclick = async () => {
+  cameraRequest++;
+  await sdk.stop();
+  start.disabled = false;
+  select.disabled = false;
+};
+capture.onclick = () => {
+  try {
+    const link = document.createElement('a');
+    link.download = `tryon-${Date.now()}.png`;
+    link.href = sdk.capture();
+    link.click();
+  } catch (error) {
+    status.textContent = describeError(error);
+  }
+};
+window.addEventListener('pagehide', () => sdk.destroy());
